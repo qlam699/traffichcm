@@ -4,11 +4,11 @@ Date inspected: 19 September 2026
 Official map: https://abc.com/Map.aspx  
 Terms of use: https://abc.com/TermOfUse/
 
-This report documents how the public Ho Chi Minh City traffic portal loads camera data. No authentication wall, CAPTCHA, or access-control bypass was used. Findings come from the public map page, its published JavaScript, and the same network requests the page makes for anonymous visitors.
+This report documents how the public HCM City traffic portal loads camera data. No authentication wall, CAPTCHA, or access-control bypass was used. Findings come from the public map page, its published JavaScript, and the same network requests the page makes for anonymous visitors.
 
 ## Summary
 
-There is **no documented public JSON API**. Camera metadata is loaded through an undocumented AjaxPro endpoint that the official map already calls after a visitor opens `Map.aspx`. Most cameras are **periodically refreshed JPEG snapshots**, not live video. A minority advertise HLS playlists. The example `videoUrl` in the project brief is a **generic Apple/Bitmovin demo stream**, used by the official player as a fallback when a camera has no `VideoUrl`. It is not a Ho Chi Minh City traffic camera.
+There is **no documented public JSON API**. Camera metadata is loaded through an undocumented AjaxPro endpoint that the official map already calls after a visitor opens `Map.aspx`. Most cameras are **periodically refreshed JPEG snapshots**, not live video. A minority advertise HLS playlists. The example `videoUrl` in the project brief is a **generic Apple/Bitmovin demo stream**, used by the official player as a fallback when a camera has no `VideoUrl`. It is not a HCM City traffic camera.
 
 ## How the Camera layer loads
 

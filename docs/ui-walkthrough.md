@@ -1,6 +1,6 @@
 # UI walkthrough
 
-1. Open the app. The map centers on Ho Chi Minh City. The sidebar lists cameras.
+1. Open the app. The map centers on HCM City. The sidebar lists cameras.
 2. If `TRAFFIC_CAMERA_PROVIDER=mock`, a warning banner states that labeled mock cameras are shown.
 3. Type in **Search cameras** to filter by name, road, intersection, or district.
 4. Use the district, status, and sort controls. Distance sort needs **My location**.

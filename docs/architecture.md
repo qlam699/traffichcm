@@ -2,7 +2,7 @@
 
 ## Overview
 
-The UI talks only to this application's API and a normalized `TrafficCamera` model. Upstream details of the Ho Chi Minh City traffic portal stay behind a provider interface.
+The UI talks only to this application's API and a normalized `TrafficCamera` model. Upstream details of the HCM City traffic portal stay behind a provider interface.
 
 ```
 Browser

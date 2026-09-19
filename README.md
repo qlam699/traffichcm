@@ -1,10 +1,10 @@
-# Ho Chi Minh City Traffic Camera Viewer
+# HCM City Traffic Camera Viewer
 
-A desktop-first Next.js app for browsing public traffic cameras in Ho Chi Minh City. It shows cameras on an interactive map, a searchable sidebar, and a viewer for snapshots or HLS streams when those public sources exist.
+A desktop-first Next.js app for browsing public traffic cameras in HCM City. It shows cameras on an interactive map, a searchable sidebar, and a viewer for snapshots or HLS streams when those public sources exist.
 
 ## Features
 
-- Interactive Leaflet map of Ho Chi Minh City with marker clustering
+- Interactive Leaflet map of HCM City with marker clustering
 - Searchable, filterable, virtualized camera sidebar
 - Selection synced between map and list
 - Snapshot viewer with 5-second auto-refresh, matching the official player default

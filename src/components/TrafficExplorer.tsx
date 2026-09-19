@@ -120,7 +120,7 @@ export function TrafficExplorer({ initialCameraId }: { initialCameraId?: string 
         <div className="min-w-0">
           <h1 className="truncate text-lg font-semibold text-slate-900">HCMC Traffic Cameras</h1>
           <p className="hidden text-sm text-slate-600 md:block">
-            Public cameras from the Ho Chi Minh City traffic portal, shown on a simpler map.
+            Public cameras from the HCM City traffic portal, shown on a simpler map.
           </p>
           <p className="text-xs text-slate-600 md:hidden">{cameras.length} cameras</p>
         </div>

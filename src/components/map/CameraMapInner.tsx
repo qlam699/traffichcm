@@ -38,7 +38,7 @@ export default function CameraMapInner({
         doubleClickZoom
         boxZoom
         keyboard
-        aria-label="Ho Chi Minh City traffic camera map"
+        aria-label="HCM City traffic camera map"
       >
         <TileLayer attribution={attribution} url={tileUrl} />
         <BoundsWatcher onBoundsChange={onBoundsChange} />

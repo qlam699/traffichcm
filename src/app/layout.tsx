@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'HCMC Traffic Camera Viewer',
   description:
-    'Browse public Ho Chi Minh City traffic cameras on an interactive map with a searchable sidebar.',
+    'Browse public HCM City traffic cameras on an interactive map with a searchable sidebar.',
 };
 
 export const viewport: Viewport = {
