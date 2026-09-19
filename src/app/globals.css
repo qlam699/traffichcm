@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --foreground: #0f172a;
 }
 
 @theme inline {
@@ -12,15 +12,123 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
+  height: 100dvh;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+}
+
+.leaflet-control-zoom a {
+  width: 44px !important;
+  height: 44px !important;
+  line-height: 44px !important;
+  font-size: 18px !important;
+}
+
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  background: #e2e8f0;
+  font-family: inherit;
+}
+
+.camera-marker {
+  background: transparent;
+  border: 0;
+}
+
+.camera-marker-dot {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  border: 2px solid white;
+  box-shadow: 0 0 0 1px rgb(15 23 42 / 0.25);
+}
+
+.camera-marker-dot.is-selected {
+  box-shadow: 0 0 0 3px #0f766e;
+}
+
+.camera-preview {
+  display: grid;
+  gap: 6px;
+  min-width: 180px;
+  max-width: 240px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  font-size: 12px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.camera-preview:focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: 2px;
+}
+
+.camera-preview img,
+.camera-preview-empty {
+  width: 100%;
+  height: 124px;
+  object-fit: cover;
+  border-radius: 8px;
+  background: #0f172a;
+}
+
+.camera-preview-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+}
+
+.camera-preview strong,
+.camera-preview span {
+  display: block;
+}
+
+.camera-preview-cta {
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.camera-preview-popup .leaflet-popup-content {
+  margin: 10px 12px;
+}
+
+.camera-preview-popup .leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgb(15 23 42 / 0.2);
+}
+
+@media (max-width: 767px) {
+  .leaflet-bottom.leaflet-right {
+    bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  }
+
+  .camera-preview {
+    min-width: 150px;
+  }
+
+  .camera-preview img,
+  .camera-preview-empty {
+    height: 110px;
+  }
+}
+
+dialog::backdrop {
+  background: rgb(15 23 42 / 0.45);
 }

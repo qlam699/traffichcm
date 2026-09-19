@@ -1,0 +1,133 @@
+name: Deploy VPS Webinoly
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Build Next.js
+        env:
+          TRAFFIC_CAMERA_PROVIDER: ${{ vars.TRAFFIC_CAMERA_PROVIDER || 'hcmc' }}
+          TRAFFIC_CAMERA_BASE_URL: ${{ vars.TRAFFIC_CAMERA_BASE_URL || '/' }}
+          NEXT_PUBLIC_MAP_TILE_URL: ${{ vars.NEXT_PUBLIC_MAP_TILE_URL || '' }}
+          NEXT_PUBLIC_MAP_ATTRIBUTION: ${{ vars.NEXT_PUBLIC_MAP_ATTRIBUTION || '' }}
+        run: npm run build
+      - name: Production node_modules
+        run: rm -rf node_modules && npm ci --omit=dev
+      - name: Pack release
+        run: |
+          tar -czf traffichcm-release.tar.gz \
+            .next \
+            public \
+            node_modules \
+            package.json \
+            package-lock.json \
+            next.config.ts \
+            deploy \
+            scripts
+      - uses: actions/upload-artifact@v4
+        with:
+          name: traffichcm-release
+          path: traffichcm-release.tar.gz
+          retention-days: 7
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      PORT: ${{ vars.PORT || '8790' }}
+      TRAFFIC_CAMERA_PROVIDER: ${{ vars.TRAFFIC_CAMERA_PROVIDER || 'hcmc' }}
+      TRAFFIC_CAMERA_BASE_URL: ${{ vars.TRAFFIC_CAMERA_BASE_URL || 'https://abc.com' }}
+      NEXT_PUBLIC_MAP_TILE_URL: ${{ vars.NEXT_PUBLIC_MAP_TILE_URL || '' }}
+      NEXT_PUBLIC_MAP_ATTRIBUTION: ${{ vars.NEXT_PUBLIC_MAP_ATTRIBUTION || '' }}
+      UPSTREAM_REQUEST_TIMEOUT_MS: ${{ vars.UPSTREAM_REQUEST_TIMEOUT_MS || '10000' }}
+      CAMERA_METADATA_CACHE_TTL_SECONDS: ${{ vars.CAMERA_METADATA_CACHE_TTL_SECONDS || '60' }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: traffichcm-release
+          path: release
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" | tr -d '\r' > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Copy release to VPS
+        env:
+          SSH_HOST: ${{ secrets.VPS_HOST }}
+          SSH_USER: ${{ secrets.VPS_USER }}
+        run: |
+          if [ -z "$SSH_HOST" ] || [ -z "$SSH_USER" ]; then
+            echo "Missing VPS_HOST or VPS_USER"
+            exit 1
+          fi
+          scp -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes \
+            release/traffichcm-release.tar.gz \
+            "$SSH_USER@$SSH_HOST:/tmp/traffichcm-release.tar.gz"
+
+      - name: Deploy on VPS
+        env:
+          SSH_HOST: ${{ secrets.VPS_HOST }}
+          SSH_USER: ${{ secrets.VPS_USER }}
+        run: |
+          if [ -z "$SSH_HOST" ] || [ -z "$SSH_USER" ]; then
+            echo "Missing VPS_HOST or VPS_USER"
+            exit 1
+          fi
+          ssh -i ~/.ssh/id_ed25519 -o IdentitiesOnly=yes \
+            "$SSH_USER@$SSH_HOST" \
+            "export PORT='${{ env.PORT }}' TRAFFIC_CAMERA_PROVIDER='${{ env.TRAFFIC_CAMERA_PROVIDER }}' TRAFFIC_CAMERA_BASE_URL='${{ env.TRAFFIC_CAMERA_BASE_URL }}' NEXT_PUBLIC_MAP_TILE_URL='${{ env.NEXT_PUBLIC_MAP_TILE_URL }}' NEXT_PUBLIC_MAP_ATTRIBUTION='${{ env.NEXT_PUBLIC_MAP_ATTRIBUTION }}' UPSTREAM_REQUEST_TIMEOUT_MS='${{ env.UPSTREAM_REQUEST_TIMEOUT_MS }}' CAMERA_METADATA_CACHE_TTL_SECONDS='${{ env.CAMERA_METADATA_CACHE_TTL_SECONDS }}'; bash -s" << 'EOF'
+          set -euo pipefail
+
+          RELEASE=/tmp/traffichcm-release.tar.gz
+          UNPACK=/tmp/traffichcm-unpack
+          APP_DIR=/var/www/traffichcm
+
+          rm -rf "$UNPACK"
+          mkdir -p "$UNPACK"
+          tar -xzf "$RELEASE" -C "$UNPACK"
+
+          if [ ! -f /etc/systemd/system/traffichcm.service ]; then
+            echo "==> First-time: seed APP_DIR + setup-vps-webinoly.sh"
+            sudo mkdir -p /var/www
+            sudo rm -rf "$APP_DIR"
+            sudo mkdir -p "$APP_DIR"
+            sudo tar -xzf "$RELEASE" -C "$APP_DIR"
+            sudo --preserve-env=PORT,TRAFFIC_CAMERA_PROVIDER,TRAFFIC_CAMERA_BASE_URL,NEXT_PUBLIC_MAP_TILE_URL,NEXT_PUBLIC_MAP_ATTRIBUTION,UPSTREAM_REQUEST_TIMEOUT_MS,CAMERA_METADATA_CACHE_TTL_SECONDS \
+              bash "$APP_DIR/scripts/setup-vps-webinoly.sh"
+          fi
+
+          if [ ! -e /etc/nginx/sites-available/traffic.codayroi.com ]; then
+            echo "WARN: site traffic.codayroi.com not found — app still deploys on :8790"
+            echo "  Create once on VPS:"
+            echo "  sudo site traffic.codayroi.com -proxy=[127.0.0.1:8790]"
+            echo "  sudo site traffic.codayroi.com -ssl=on"
+          fi
+
+          echo "==> deploy.sh --release (wipe APP_DIR + extract + restart)"
+          sudo --preserve-env=PORT,TRAFFIC_CAMERA_PROVIDER,TRAFFIC_CAMERA_BASE_URL,NEXT_PUBLIC_MAP_TILE_URL,NEXT_PUBLIC_MAP_ATTRIBUTION,UPSTREAM_REQUEST_TIMEOUT_MS,CAMERA_METADATA_CACHE_TTL_SECONDS \
+            env APP_DIR="$APP_DIR" \
+            bash "$UNPACK/scripts/deploy.sh" --release "$RELEASE"
+
+          rm -rf "$UNPACK"
+          rm -f "$RELEASE"
+          EOF
