@@ -132,3 +132,97 @@ body {
 dialog::backdrop {
   background: rgb(15 23 42 / 0.45);
 }
+
+[data-media]:fullscreen,
+[data-media]:-webkit-full-screen {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f172a;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+[data-media]:fullscreen > :not(.camera-media-wide-fs-close),
+[data-media]:-webkit-full-screen > :not(.camera-media-wide-fs-close) {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  aspect-ratio: auto !important;
+  border-radius: 0 !important;
+}
+
+[data-media]:fullscreen img,
+[data-media]:-webkit-full-screen img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.camera-media-wide-fs {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0f172a;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.camera-media-wide-fs > :not(.camera-media-wide-fs-close) {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  aspect-ratio: auto !important;
+  border-radius: 0 !important;
+}
+
+.camera-media-wide-fs img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.camera-media-wide-fs-close {
+  position: absolute;
+  top: max(0.75rem, env(safe-area-inset-top));
+  right: max(0.75rem, env(safe-area-inset-right));
+  z-index: 1;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid rgb(148 163 184 / 0.5);
+  background: rgb(15 23 42 / 0.75);
+  padding: 0.5rem 0.75rem;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .camera-media-wide-fs > :not(.camera-media-wide-fs-close) {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 100dvh;
+    height: 100dvw;
+    max-height: none;
+    transform: translate(-50%, -50%) rotate(90deg);
+  }
+
+  .camera-media-wide-fs img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .camera-media-wide-fs-close {
+    top: max(0.75rem, env(safe-area-inset-top));
+    right: max(0.75rem, env(safe-area-inset-right));
+    bottom: auto;
+  }
+}

@@ -24,8 +24,8 @@ export function CameraViewer({
   const touchStartX = useRef<number | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [copied, setCopied] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [wideFullscreen, setWideFullscreen] = useState(false);
   const isMobile = useMediaQuery('(max-width: 767px)');
   const shareUrl =
     typeof window === 'undefined'
@@ -57,16 +57,114 @@ export function CameraViewer({
     return () => window.removeEventListener('keydown', onKey);
   }, [onNext, onPrevious]);
 
+  useEffect(() => {
+    if (!wideFullscreen) {
+      return;
+    }
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setWideFullscreen(false);
+        try {
+          screen.orientation?.unlock?.();
+        } catch {
+          // Unsupported browsers ignore unlock.
+        }
+        if (document.fullscreenElement) {
+          void document.exitFullscreen().catch(() => undefined);
+        }
+      }
+    };
+
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        setWideFullscreen(false);
+        try {
+          screen.orientation?.unlock?.();
+        } catch {
+          // Unsupported browsers ignore unlock.
+        }
+      }
+    };
+
+    window.addEventListener('keydown', onKey);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKey);
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+    };
+  }, [wideFullscreen]);
+
+  const unlockOrientation = () => {
+    try {
+      screen.orientation?.unlock?.();
+    } catch {
+      // Unsupported browsers ignore unlock.
+    }
+  };
+
+  const exitWideFullscreen = async () => {
+    setWideFullscreen(false);
+    unlockOrientation();
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen();
+      } catch {
+        // Ignore exit failures.
+      }
+    }
+  };
+
   const copyLink = async () => {
     await navigator.clipboard.writeText(shareUrl);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1500);
   };
 
-  const openFullscreen = () => {
-    const node = dialogRef.current?.querySelector('[data-media]');
-    if (node && 'requestFullscreen' in node) {
-      void (node as HTMLElement).requestFullscreen();
+  const openFullscreen = async () => {
+    const node = mediaRef.current;
+    if (!node) {
+      return;
+    }
+
+    if (isMobile) {
+      setWideFullscreen(true);
+      try {
+        await screen.orientation?.lock?.('landscape');
+      } catch {
+        // Orientation lock is often blocked; CSS landscape fallback still applies.
+      }
+      try {
+        const requestFs =
+          node.requestFullscreen?.bind(node) ??
+          (
+            node as HTMLElement & {
+              webkitRequestFullscreen?: () => Promise<void> | void;
+            }
+          ).webkitRequestFullscreen?.bind(node);
+        await requestFs?.();
+      } catch {
+        // Overlay still provides widescreen view without native fullscreen.
+      }
+      return;
+    }
+
+    const requestFs =
+      node.requestFullscreen?.bind(node) ??
+      (
+        node as HTMLElement & {
+          webkitRequestFullscreen?: () => Promise<void> | void;
+        }
+      ).webkitRequestFullscreen?.bind(node);
+
+    try {
+      await requestFs?.();
+    } catch {
+      // Fullscreen may be denied by the browser.
     }
   };
 
@@ -107,7 +205,10 @@ export function CameraViewer({
           <StatusBadge status={camera.status} />
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              void exitWideFullscreen();
+              onClose();
+            }}
             className="min-h-11 min-w-11 rounded-md px-3 text-sm font-medium text-slate-700 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700"
             aria-label="Close camera viewer"
           >
@@ -122,6 +223,7 @@ export function CameraViewer({
         <div
           ref={mediaRef}
           data-media
+          className={wideFullscreen ? 'camera-media-wide-fs' : undefined}
           onTouchStart={(event) => {
             touchStartX.current = event.changedTouches[0]?.clientX ?? null;
           }}
@@ -140,6 +242,16 @@ export function CameraViewer({
             }
           }}
         >
+          {wideFullscreen ? (
+            <button
+              type="button"
+              className="camera-media-wide-fs-close"
+              onClick={() => void exitWideFullscreen()}
+              aria-label="Exit fullscreen"
+            >
+              Close
+            </button>
+          ) : null}
           {camera.status === 'offline' && !camera.source ? (
             <p className="rounded-lg bg-slate-100 p-6 text-center text-slate-700">
               This camera is offline and has no public media source.
@@ -155,6 +267,7 @@ export function CameraViewer({
               title={camera.name}
               refreshIntervalSeconds={camera.source.refreshIntervalSeconds}
               autoRefresh={autoRefresh}
+              fillScreen={wideFullscreen}
             />
           ) : (
             <p className="rounded-lg bg-slate-100 p-6 text-center text-slate-700">
@@ -165,24 +278,26 @@ export function CameraViewer({
 
         {isMobile ? (
           <div className="grid gap-2">
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {camera.source?.type === 'image' ? (
                 <button type="button" className={buttonClass} onClick={refreshImage}>
                   Refresh
                 </button>
-              ) : (
-                <span />
-              )}
+              ) : null}
               <button type="button" className={buttonClass} onClick={() => void copyLink()}>
                 {copied ? 'Copied' : 'Share'}
               </button>
-              <button
-                type="button"
-                className={buttonClass}
-                aria-expanded={moreOpen}
-                onClick={() => setMoreOpen((value) => !value)}
-              >
-                More
+              {camera.source?.type === 'image' ? (
+                <button
+                  type="button"
+                  className={buttonClass}
+                  onClick={() => setAutoRefresh((value) => !value)}
+                >
+                  {autoRefresh ? 'Pause auto-refresh' : 'Resume auto-refresh'}
+                </button>
+              ) : null}
+              <button type="button" className={buttonClass} onClick={() => void openFullscreen()}>
+                Fullscreen
               </button>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -193,32 +308,6 @@ export function CameraViewer({
                 Next
               </button>
             </div>
-            {moreOpen ? (
-              <div className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
-                {camera.source?.type === 'image' ? (
-                  <button
-                    type="button"
-                    className={buttonClass}
-                    onClick={() => setAutoRefresh((value) => !value)}
-                  >
-                    {autoRefresh ? 'Pause auto-refresh' : 'Resume auto-refresh'}
-                  </button>
-                ) : null}
-                {camera.originalPageUrl ? (
-                  <a
-                    className={buttonClass}
-                    href={camera.originalPageUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Open original source
-                  </a>
-                ) : null}
-                <button type="button" className={buttonClass} onClick={openFullscreen}>
-                  Fullscreen
-                </button>
-              </div>
-            ) : null}
           </div>
         ) : (
           <div className="flex flex-wrap gap-2">
@@ -236,20 +325,10 @@ export function CameraViewer({
                 </a>
               </>
             ) : null}
-            {camera.originalPageUrl ? (
-              <a
-                className={buttonClass}
-                href={camera.originalPageUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Open original source
-              </a>
-            ) : null}
             <button type="button" className={buttonClass} onClick={() => void copyLink()}>
               {copied ? 'Link copied' : 'Copy camera link'}
             </button>
-            <button type="button" className={buttonClass} onClick={openFullscreen}>
+            <button type="button" className={buttonClass} onClick={() => void openFullscreen()}>
               Fullscreen
             </button>
             <button type="button" className={buttonClass} onClick={onPrevious} disabled={!onPrevious}>

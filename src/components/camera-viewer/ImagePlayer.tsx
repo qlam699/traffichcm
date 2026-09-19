@@ -10,11 +10,13 @@ export function ImagePlayer({
   title,
   refreshIntervalSeconds = 5,
   autoRefresh,
+  fillScreen = false,
 }: {
   url: string;
   title: string;
   refreshIntervalSeconds?: number;
   autoRefresh: boolean;
+  fillScreen?: boolean;
 }) {
   const [shownSrc, setShownSrc] = useState<string | null>(null);
   const [pendingSrc, setPendingSrc] = useState<string | null>(null);
@@ -60,7 +62,13 @@ export function ImagePlayer({
   }, [failed, shownSrc, url]);
 
   return (
-    <div className="relative aspect-video overflow-hidden rounded-lg bg-slate-900">
+    <div
+      className={
+        fillScreen
+          ? 'relative h-full w-full overflow-hidden bg-slate-900'
+          : 'relative aspect-video overflow-hidden rounded-lg bg-slate-900'
+      }
+    >
       {shownSrc ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
