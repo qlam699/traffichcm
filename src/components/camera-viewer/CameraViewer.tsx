@@ -8,6 +8,41 @@ import { StatusBadge } from '@/components/common/StatusBadge';
 import { useMediaQuery } from '@/features/cameras/hooks/useMediaQuery';
 import type { TrafficCamera } from '@/features/cameras/types';
 
+type OrientationLockType =
+  | 'any'
+  | 'natural'
+  | 'landscape'
+  | 'portrait'
+  | 'portrait-primary'
+  | 'portrait-secondary'
+  | 'landscape-primary'
+  | 'landscape-secondary';
+
+type ScreenOrientationWithLock = ScreenOrientation & {
+  lock?: (orientation: OrientationLockType) => Promise<void>;
+  unlock?: () => void;
+};
+
+function getScreenOrientation(): ScreenOrientationWithLock | undefined {
+  return screen.orientation as ScreenOrientationWithLock | undefined;
+}
+
+async function lockLandscapeOrientation() {
+  const orientation = getScreenOrientation();
+  if (!orientation?.lock) {
+    return;
+  }
+  await orientation.lock('landscape');
+}
+
+function unlockOrientation() {
+  try {
+    getScreenOrientation()?.unlock?.();
+  } catch {
+    // Unsupported browsers ignore unlock.
+  }
+}
+
 export function CameraViewer({
   camera,
   onClose,
@@ -68,11 +103,7 @@ export function CameraViewer({
       if (event.key === 'Escape') {
         event.preventDefault();
         setWideFullscreen(false);
-        try {
-          screen.orientation?.unlock?.();
-        } catch {
-          // Unsupported browsers ignore unlock.
-        }
+        unlockOrientation();
         if (document.fullscreenElement) {
           void document.exitFullscreen().catch(() => undefined);
         }
@@ -82,11 +113,7 @@ export function CameraViewer({
     const onFullscreenChange = () => {
       if (!document.fullscreenElement) {
         setWideFullscreen(false);
-        try {
-          screen.orientation?.unlock?.();
-        } catch {
-          // Unsupported browsers ignore unlock.
-        }
+        unlockOrientation();
       }
     };
 
@@ -98,14 +125,6 @@ export function CameraViewer({
       document.removeEventListener('fullscreenchange', onFullscreenChange);
     };
   }, [wideFullscreen]);
-
-  const unlockOrientation = () => {
-    try {
-      screen.orientation?.unlock?.();
-    } catch {
-      // Unsupported browsers ignore unlock.
-    }
-  };
 
   const exitWideFullscreen = async () => {
     setWideFullscreen(false);
@@ -134,7 +153,7 @@ export function CameraViewer({
     if (isMobile) {
       setWideFullscreen(true);
       try {
-        await screen.orientation?.lock?.('landscape');
+        await lockLandscapeOrientation();
       } catch {
         // Orientation lock is often blocked; CSS landscape fallback still applies.
       }
