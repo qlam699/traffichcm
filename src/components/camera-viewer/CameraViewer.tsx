@@ -193,7 +193,6 @@ export function CameraViewer({
             icon={copied ? ICONS.check : ICONS.link}
             onClick={() => void copyLink()}
           />
-          <ToolButton label="Full" icon={ICONS.fullscreen} onClick={openFullscreen} />
           {camera.originalPageUrl ? (
             <a
               className={toolClass}
