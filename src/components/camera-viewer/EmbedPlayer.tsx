@@ -3,7 +3,7 @@ export function EmbedPlayer({ url, title }: { url: string; title: string }) {
     <iframe
       src={url}
       title={`${title} official camera page`}
-      className="aspect-video w-full rounded-lg border border-slate-200 bg-white"
+      className="aspect-video w-full bg-white md:rounded-lg md:border md:border-slate-200"
       referrerPolicy="no-referrer"
     />
   );

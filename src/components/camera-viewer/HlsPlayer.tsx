@@ -70,7 +70,7 @@ export function HlsPlayer({ url, title }: { url: string; title: string }) {
   }, [url]);
 
   return (
-    <div className="relative aspect-video overflow-hidden rounded-lg bg-slate-900">
+    <div className="relative aspect-video w-full overflow-hidden bg-slate-900 md:rounded-lg">
       {loading && !error ? (
         <div className="absolute inset-0">
           <LoadingState label="Loading stream" />

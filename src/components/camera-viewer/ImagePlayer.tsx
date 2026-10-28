@@ -62,13 +62,7 @@ export function ImagePlayer({
   }, [failed, shownSrc, url]);
 
   return (
-    <div
-      className={
-        fillScreen
-          ? 'relative h-full w-full overflow-hidden bg-slate-900'
-          : 'relative aspect-video overflow-hidden rounded-lg bg-slate-900'
-      }
-    >
+    <div className="relative aspect-video w-full overflow-hidden bg-slate-900 md:rounded-lg">
       {shownSrc ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
