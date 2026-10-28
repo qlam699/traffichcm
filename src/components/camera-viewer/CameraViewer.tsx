@@ -9,6 +9,41 @@ import { useMediaQuery } from '@/features/cameras/hooks/useMediaQuery';
 import type { TrafficCamera } from '@/features/cameras/types';
 import { statusLabel } from '@/features/cameras/utils/filter';
 
+type OrientationLockType =
+  | 'any'
+  | 'natural'
+  | 'landscape'
+  | 'portrait'
+  | 'portrait-primary'
+  | 'portrait-secondary'
+  | 'landscape-primary'
+  | 'landscape-secondary';
+
+type ScreenOrientationWithLock = ScreenOrientation & {
+  lock?: (orientation: OrientationLockType) => Promise<void>;
+  unlock?: () => void;
+};
+
+function getScreenOrientation(): ScreenOrientationWithLock | undefined {
+  return screen.orientation as ScreenOrientationWithLock | undefined;
+}
+
+async function lockLandscapeOrientation() {
+  const orientation = getScreenOrientation();
+  if (!orientation?.lock) {
+    return;
+  }
+  await orientation.lock('landscape');
+}
+
+function unlockOrientation() {
+  try {
+    getScreenOrientation()?.unlock?.();
+  } catch {
+    // Unsupported browsers ignore unlock.
+  }
+}
+
 export function CameraViewer({
   camera,
   onClose,
@@ -26,6 +61,7 @@ export function CameraViewer({
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [copied, setCopied] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [wideFullscreen, setWideFullscreen] = useState(false);
   const isMobile = useMediaQuery('(max-width: 767px)');
   const shareUrl =
     typeof window === 'undefined'
@@ -58,16 +94,98 @@ export function CameraViewer({
     return () => window.removeEventListener('keydown', onKey);
   }, [onNext, onPrevious]);
 
+  useEffect(() => {
+    if (!wideFullscreen) {
+      return;
+    }
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setWideFullscreen(false);
+        unlockOrientation();
+        if (document.fullscreenElement) {
+          void document.exitFullscreen().catch(() => undefined);
+        }
+      }
+    };
+
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        setWideFullscreen(false);
+        unlockOrientation();
+      }
+    };
+
+    window.addEventListener('keydown', onKey);
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKey);
+      document.removeEventListener('fullscreenchange', onFullscreenChange);
+    };
+  }, [wideFullscreen]);
+
+  const exitWideFullscreen = async () => {
+    setWideFullscreen(false);
+    unlockOrientation();
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen();
+      } catch {
+        // Ignore exit failures.
+      }
+    }
+  };
+
   const copyLink = async () => {
     await navigator.clipboard.writeText(shareUrl);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1500);
   };
 
-  const openFullscreen = () => {
-    const node = dialogRef.current?.querySelector('[data-media]');
-    if (node && 'requestFullscreen' in node) {
-      void (node as HTMLElement).requestFullscreen();
+  const openFullscreen = async () => {
+    const node = mediaRef.current;
+    if (!node) {
+      return;
+    }
+
+    if (isMobile) {
+      setWideFullscreen(true);
+      try {
+        await lockLandscapeOrientation();
+      } catch {
+        // Orientation lock is often blocked; CSS landscape fallback still applies.
+      }
+      try {
+        const requestFs =
+          node.requestFullscreen?.bind(node) ??
+          (
+            node as HTMLElement & {
+              webkitRequestFullscreen?: () => Promise<void> | void;
+            }
+          ).webkitRequestFullscreen?.bind(node);
+        await requestFs?.();
+      } catch {
+        // Overlay still provides widescreen view without native fullscreen.
+      }
+      return;
+    }
+
+    const requestFs =
+      node.requestFullscreen?.bind(node) ??
+      (
+        node as HTMLElement & {
+          webkitRequestFullscreen?: () => Promise<void> | void;
+        }
+      ).webkitRequestFullscreen?.bind(node);
+
+    try {
+      await requestFs?.();
+    } catch {
+      // Fullscreen may be denied by the browser.
     }
   };
 
@@ -238,7 +356,10 @@ export function CameraViewer({
           <StatusBadge status={camera.status} />
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              void exitWideFullscreen();
+              onClose();
+            }}
             className="min-h-11 min-w-11 rounded-md px-3 text-sm font-medium text-slate-700 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal-700"
             aria-label="Close camera viewer"
           >

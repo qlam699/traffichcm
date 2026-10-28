@@ -10,11 +10,13 @@ export function ImagePlayer({
   title,
   refreshIntervalSeconds = 5,
   autoRefresh,
+  fillScreen = false,
 }: {
   url: string;
   title: string;
   refreshIntervalSeconds?: number;
   autoRefresh: boolean;
+  fillScreen?: boolean;
 }) {
   const [shownSrc, setShownSrc] = useState<string | null>(null);
   const [pendingSrc, setPendingSrc] = useState<string | null>(null);
